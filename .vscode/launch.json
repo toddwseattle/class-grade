@@ -12,12 +12,15 @@
       "args": [
         "run-tests",
         "--path",
-        "\"C:/gh/AshWeb2020-phpobjects/phpobjects-10-15-2020-12-39-46\""
+        "\"C:/gh/AshWeb2020-phpobjects/phpobjects-10-15-2020-12-39-46\"",
+        "--resultsPath",
+        "c:/gh/AshWeb2020-phpobject/results"
       ],
       "cwd": "${workspaceFolder}",
       "runtimeExecutable": "deno",
       "runtimeArgs": ["run", "--inspect-brk", "--allow-all", "--unstable"],
-      "attachSimplePort": 9229
+      "attachSimplePort": 9229,
+      "outputCapture": "std"
     }
   ]
 }
