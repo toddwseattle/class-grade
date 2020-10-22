@@ -1,14 +1,9 @@
 import yargs from "https://deno.land/x/yargs/deno.ts";
 import { Arguments, YargsType } from "https://deno.land/x/yargs/types.ts";
 import { YargCommand } from "./command.ts";
-import {
-  existsSync,
-  walk,
-  WalkEntry,
-  walkSync,
-} from "https://deno.land/std@0.74.0/fs/mod.ts";
-import { expandGlobSync } from "https://deno.land/std@0.74.0/fs/mod.ts";
+import { WalkEntry } from "https://deno.land/std@0.74.0/fs/mod.ts";
 import { Path, WINDOWS_SEPS } from "https://deno.land/x/path/mod.ts";
+import { getDirectories } from "./utils.ts";
 interface RunTestArgs {
   [x: string]: unknown;
   studentCSV: string;
@@ -17,8 +12,10 @@ interface RunTestArgs {
   path: string;
   resultsPath: string;
   isrepo: boolean;
+  max: number;
 }
 export class RunTests implements YargCommand {
+  static FILEMARKER = "_OUTPUT_";
   constructor() {
     // bind member that will be callbacks
     this.processYarguments = this.processYarguments.bind(this);
@@ -49,7 +46,7 @@ export class RunTests implements YargCommand {
         command: {
           type: "string",
           default: "echo",
-          description: "command to run in each directory",
+          description: `command to run in each directory ${RunTests.FILEMARKER} is replaced with a unique file name matching the directory placed in the results path`,
         },
         path: {
           type: "string",
@@ -63,6 +60,11 @@ export class RunTests implements YargCommand {
           description:
             "each directory should be a git repository (have a .git subdir)",
         },
+        max: {
+          type: "integer",
+          default: null,
+          description: "how many directories to do maximum (default all)",
+        },
       })
       .help(
         "traverse each directory in path, looking up directory as a github id from student.csv, run the command and place results in results.csv"
@@ -74,21 +76,12 @@ export class RunTests implements YargCommand {
    * @param glob to use to find directories
    * @returns an array of directories (WalkEntries) or empty arry if none
    */
-  private getdirectories(glob: string): WalkEntry[] {
-    const directories: WalkEntry[] = [];
-    for (const file of expandGlobSync(glob)) {
-      if (file.isDirectory) {
-        directories.push(file);
-      }
-    }
-    return directories;
-  }
+
   private isDir(path: string): boolean {
     const isDir = new Path(path);
     return isDir.isDir;
   }
-  private async performForDirectories(directories: WalkEntry[]): Promise<any> {}
-  command(yargs: YargsType & RunTestArgs): YargsType {
+  async command(yargs: YargsType & RunTestArgs): Promise<YargsType> {
     //runTestarg = yargs;
     console.log(`studentCSV: ${yargs["studentCSV"]}`);
     console.log(`resultsCSV: ${yargs.resultsCSV}`);
@@ -97,7 +90,7 @@ export class RunTests implements YargCommand {
     const path = this.isDir(yargs.path)
       ? new Path(yargs.path).push("*")
       : new Path(yargs.path);
-    let directories = this.getdirectories(path.toString());
+    let directories = getDirectories(path.toString());
     if (directories.length == 0) {
       console.log(`nothing to do for ${path}`);
     } else {
@@ -116,10 +109,65 @@ export class RunTests implements YargCommand {
           }
         }
       }
-      directories.forEach((dir) => {
-        console.log(`processing ${dir.name}`);
-      });
+      const execdir: Promise<boolean>[] = [];
+      for (let i = 0; i < directories.length; i++) {
+        const dir = directories[i];
+        console.log(`queuing processing for ${dir.name}`);
+        execdir.push(this.processFile(dir, yargs.command, resultsPath));
+        if (yargs.max && i === yargs.max) break;
+      }
+      const results = await Promise.all(execdir);
     }
     return yargs;
+  }
+  async processFile(
+    dir: WalkEntry,
+    command: string,
+    resultsPath: Path
+  ): Promise<boolean> {
+    // change directory to the dir
+    const cwd = Deno.cwd();
+    Deno.chdir(dir.path);
+    // create the name of the output file and output err
+    const out = dir.name + ".out";
+    const err = dir.name + ".err";
+
+    // generate the command
+    const splitCommand = command.split(" ");
+
+    splitCommand.forEach((param, i) => {
+      if (param === RunTests.FILEMARKER) {
+        const outputsub = new Path(resultsPath.toString()).push(
+          dir.name.toString()
+        );
+        splitCommand[i] = outputsub.toString();
+      }
+    });
+    // exec the command
+    const result = Deno.run({
+      cmd: splitCommand,
+      stdout: "piped",
+      stderr: "piped",
+    });
+    try {
+      const { code } = await result.status();
+
+      if (code === 0) {
+        const rawOutput = await result.output();
+        await Deno.stdout.write(rawOutput);
+      } else if (code === 2) {
+        const rawError = await result.stderrOutput();
+        const rawOutput = await result.output();
+        await Deno.stdout.write(rawOutput);
+        const errorString = new TextDecoder().decode(rawError);
+        console.log(errorString);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+
+    // handle errors
+    // console.log(result.status);
+    return true;
   }
 }
