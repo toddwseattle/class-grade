@@ -41,12 +41,15 @@ export class RunTests implements YargCommand {
           default: "_results",
           description:
             "path to directory where results for each command should be stored",
+          help:
+            "path to directory where results for each command should be stored",
           alias: ["rp"],
         },
         command: {
           type: "string",
           default: "echo",
           description: `command to run in each directory ${RunTests.FILEMARKER} is replaced with a unique file name matching the directory placed in the results path`,
+          help: `command to run in each directory ${RunTests.FILEMARKER} is replaced with a unique file name matching the directory placed in the results path`,
         },
         path: {
           type: "string",
