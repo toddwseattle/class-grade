@@ -5,6 +5,18 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Launch --help command",
+      "request": "launch",
+      "type": "pwa-node",
+      "program": "main.ts",
+      "args": ["--help"],
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "deno",
+      "runtimeArgs": ["run", "--inspect-brk", "--allow-all", "--unstable"],
+      "attachSimplePort": 9229,
+      "outputCapture": "std"
+    },
+    {
       "name": "Launch Deno run-tests command",
       "request": "launch",
       "type": "pwa-node",
@@ -12,11 +24,31 @@
       "args": [
         "run-tests",
         "--path",
-        "\"C:/gh/AshWeb2020-phpobjects/phpobjects-10-20-2020-05-17-20\"",
+        "\"C:/gh/AshWeb2020-phpobjects/phpobjects-12-04-2020-11-54-27\"",
         "--resultsPath",
-        "c:/gh/AshWeb2020-phpobjects/results",
+        "c:/gh/AshWeb2020-phpobjects/results-12-04",
         "--command",
         "phpunit.bat --log-junit _OUTPUT_ .\\menuTest.php"
+      ],
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "deno",
+      "runtimeArgs": ["run", "--inspect-brk", "--allow-all", "--unstable"],
+      "attachSimplePort": 9229,
+      "outputCapture": "std"
+    },
+    {
+      "name": "Launch Deno run-tests php-loc command",
+      "request": "launch",
+      "type": "pwa-node",
+      "program": "main.ts",
+      "args": [
+        "run-tests",
+        "--path",
+        "\"C:/gh/AshWeb2020-phpobjects/phpobjects-12-04-2020-11-54-27\"",
+        "--resultsPath",
+        "c:/gh/AshWeb2020-phpobjects/phploc-12-04",
+        "--command",
+        "phploc.bat --log-csv _OUTPUT_ ."
       ],
       "cwd": "${workspaceFolder}",
       "runtimeExecutable": "deno",
@@ -29,7 +61,37 @@
       "request": "launch",
       "type": "pwa-node",
       "program": "main.ts",
-      "args": ["junit2csv", "--testDir", "c:/gh/AshWeb2020-phpobjects/results"],
+      "args": [
+        "junit2csv",
+        "--testDir",
+        "c:/gh/AshWeb2020-phpobjects/results-12-04",
+        "--results",
+        "c:/gh/AshWeb2020-phpobjects/results-12-04.csv"
+      ],
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "deno",
+      "runtimeArgs": ["run", "--inspect-brk", "--allow-all", "--unstable"],
+      "attachSimplePort": 9229,
+      "outputCapture": "std"
+    },
+    {
+      "name": "Launch Deno junit2csv help",
+      "request": "launch",
+      "type": "pwa-node",
+      "program": "main.ts",
+      "args": ["junit2csv", "--help"],
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "deno",
+      "runtimeArgs": ["run", "--inspect-brk", "--allow-all", "--unstable"],
+      "attachSimplePort": 9229,
+      "outputCapture": "std"
+    },
+    {
+      "name": "Launch Deno run-tests help",
+      "request": "launch",
+      "type": "pwa-node",
+      "program": "main.ts",
+      "args": ["run-tests", "--help"],
       "cwd": "${workspaceFolder}",
       "runtimeExecutable": "deno",
       "runtimeArgs": ["run", "--inspect-brk", "--allow-all", "--unstable"],

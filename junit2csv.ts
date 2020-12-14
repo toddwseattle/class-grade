@@ -1,4 +1,4 @@
-import { Arguments, YargsType } from "https://deno.land/x/yargs/types.ts";
+import { Arguments } from "https://deno.land/x/yargs/deno-types.ts";
 import { YargCommand } from "./command.ts";
 import parse from "https://denopkg.com/nekobato/deno-xml-parser/index.ts";
 // import Document from "https://denopkg.com/nekobato/deno-xml-parser/index.ts";
@@ -36,7 +36,10 @@ export class Junit2csv implements YargCommand {
     this.processYarguments = this.processYarguments.bind(this);
     this.command = this.command.bind(this);
   }
-  processYarguments(yargs: YargsType) {
+  processYarguments(yargs: Arguments) {
+    yargs.help(
+      "collect topline statistics from a directory of junit xml files"
+    );
     yargs.options({
       testDir: {
         type: "string",
@@ -59,7 +62,7 @@ export class Junit2csv implements YargCommand {
     return yargs;
   }
 
-  async command(yargs: YargsType & Junit2csvArgs): Promise<YargsType> {
+  async command(yargs: Arguments & Junit2csvArgs): Promise<void> {
     const dir = new Path(yargs.testDir);
     // if a direcotry is passed; turn it into a wildcard blob
     if (dir.isDir) {
@@ -100,7 +103,7 @@ export class Junit2csv implements YargCommand {
     }
 
     console.table(resultCSV);
-    return yargs;
+    // return yargs;
   }
   /**
    * take a 2d array and converts to a comma delimted csv file; with a row for each of the first
@@ -150,6 +153,7 @@ export class Junit2csv implements YargCommand {
         result.status = "success";
         result.message = `Test Suite Read for ${file.name}`;
         result.results = this.getCSVline(xmlResult);
+        result.results.push(`file://${file.path}`);
       }
       return result;
     } catch (error) {
@@ -158,7 +162,7 @@ export class Junit2csv implements YargCommand {
     }
   }
   getCSVtitle(): string[] {
-    return ["tests", "errors", "failures", "assertions", "time"];
+    return ["tests", "errors", "failures", "assertions", "time", "path"];
   }
   getCSVline(xml: Document): string[] {
     const testResults = xml?.root?.children[0]

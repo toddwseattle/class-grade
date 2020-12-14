@@ -1,9 +1,9 @@
 import yargs from "https://deno.land/x/yargs/deno.ts";
-import { Arguments, YargsType } from "https://deno.land/x/yargs/types.ts";
 import { YargCommand } from "./command.ts";
 import { WalkEntry } from "https://deno.land/std@0.74.0/fs/mod.ts";
 import { Path, WINDOWS_SEPS } from "https://deno.land/x/path/mod.ts";
 import { getDirectories } from "./utils.ts";
+import { Arguments } from "https://deno.land/x/yargs_parser@v20.2.4-deno/build/lib/yargs-parser-types.d.ts";
 interface RunTestArgs {
   [x: string]: unknown;
   studentCSV: string;
@@ -21,8 +21,8 @@ export class RunTests implements YargCommand {
     this.processYarguments = this.processYarguments.bind(this);
     this.command = this.command.bind(this);
   }
-  processYarguments(yargs: YargsType): YargsType {
-    yargs
+  processYarguments(yargs: Arguments): Arguments {
+    return yargs
       .options({
         studentCSV: {
           type: "string",
@@ -72,7 +72,6 @@ export class RunTests implements YargCommand {
       .help(
         "traverse each directory in path, looking up directory as a github id from student.csv, run the command and place results in results.csv"
       );
-    return yargs;
   }
   /**
    * Return just the directories of a glob
@@ -84,44 +83,50 @@ export class RunTests implements YargCommand {
     const isDir = new Path(path);
     return isDir.isDir;
   }
-  async command(yargs: YargsType & RunTestArgs): Promise<YargsType> {
-    //runTestarg = yargs;
-    console.log(`studentCSV: ${yargs["studentCSV"]}`);
-    console.log(`resultsCSV: ${yargs.resultsCSV}`);
-    console.log(`command: ${yargs.command}`);
-    // append *.* if it's a dir
-    const path = this.isDir(yargs.path)
-      ? new Path(yargs.path).push("*")
-      : new Path(yargs.path);
-    let directories = getDirectories(path.toString());
-    if (directories.length == 0) {
-      console.log(`nothing to do for ${path}`);
-    } else {
-      console.log(`performing command in ${directories.length} directories`);
-      const resultsPath = new Path(yargs.resultsPath);
-      if (!resultsPath.isDir) {
-        if (resultsPath.isFile) {
-          console.log(
-            `${resultsPath} is a file; a directory or new directory path was expected...terminating`
-          );
-          return yargs;
-        } else {
-          if (!resultsPath.mkDirSync(true)) {
-            console.log(`can't create the path ${resultsPath} terminating...`);
-            return yargs;
+  async command(yargs: Arguments & RunTestArgs): Promise<void> {
+    //Promise<Arguments> {
+    if (!yargs.help) {
+      console.log(`studentCSV: ${yargs["studentCSV"]}`);
+      console.log(`resultsCSV: ${yargs.resultsCSV}`);
+      console.log(`command: ${yargs.command}`);
+      // append *.* if it's a dir
+      const path = this.isDir(yargs.path)
+        ? new Path(yargs.path).push("*")
+        : new Path(yargs.path);
+      let directories = getDirectories(path.toString());
+      if (directories.length == 0) {
+        console.log(`nothing to do for ${path}`);
+      } else {
+        console.log(`performing command in ${directories.length} directories`);
+        const resultsPath = new Path(yargs.resultsPath);
+        if (!resultsPath.isDir) {
+          if (resultsPath.isFile) {
+            console.log(
+              `${resultsPath} is a file; a directory or new directory path was expected...terminating`
+            );
+            // return yargs;
+          } else {
+            if (!resultsPath.mkDirSync(true)) {
+              console.log(
+                `can't create the path ${resultsPath} terminating...`
+              );
+              //return yargs;
+            }
           }
         }
+        const execdir: Promise<boolean>[] = [];
+        for (let i = 0; i < directories.length; i++) {
+          const dir = directories[i];
+          console.log(`queuing processing for ${dir.name}`);
+          execdir.push(this.processFile(dir, yargs.command, resultsPath));
+          if (yargs.max && i === yargs.max) break;
+        }
+        const results = await Promise.all(execdir);
       }
-      const execdir: Promise<boolean>[] = [];
-      for (let i = 0; i < directories.length; i++) {
-        const dir = directories[i];
-        console.log(`queuing processing for ${dir.name}`);
-        execdir.push(this.processFile(dir, yargs.command, resultsPath));
-        if (yargs.max && i === yargs.max) break;
-      }
-      const results = await Promise.all(execdir);
+      // return yargs;
     }
-    return yargs;
+    // yargs.showHelp("log");
+    // return yargs;
   }
   async processFile(
     dir: WalkEntry,
@@ -164,13 +169,14 @@ export class RunTests implements YargCommand {
         await Deno.stdout.write(rawOutput);
         const errorString = new TextDecoder().decode(rawError);
         console.log(errorString);
+        return true;
       }
     } catch (error) {
       console.log(error);
+      return false;
     }
 
-    // handle errors
-    // console.log(result.status);
+    Deno.chdir(cwd); // change back to working directory before command was processed.
     return true;
   }
 }
