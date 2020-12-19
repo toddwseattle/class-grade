@@ -2,10 +2,12 @@ import yargs from "https://deno.land/x/yargs/deno.ts";
 import { RunTests } from "./runtests.ts";
 import { Junit2csv } from "./junit2csv.ts";
 import { CheckSize } from "./checkSize.ts";
+import { CsvCombine } from "./csvcombine.ts";
 const version = "0.0.1";
 const runTests = new RunTests();
 const junit2csv = new Junit2csv();
 const checkSize = new CheckSize();
+const csvCombine = new CsvCombine();
 const gradeCommands = yargs(Deno.args) as any;
 gradeCommands
   .command(
@@ -25,6 +27,12 @@ gradeCommands
     "get the number and sizes of files in each directory",
     checkSize.processYarguments,
     checkSize.command
+  )
+  .command(
+    "csvcombine",
+    "combine small normalized csvs to a single csv file with a filename and path fields",
+    csvCombine.processYarguments,
+    csvCombine.command
   )
   .help()
   .version(version).argv;

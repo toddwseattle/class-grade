@@ -1,3 +1,6 @@
+/***
+ * The CSV combine command.
+ */
 import { Arguments } from "https://deno.land/x/yargs/deno-types.ts";
 import { YargCommand } from "./command.ts";
 import parse from "https://denopkg.com/nekobato/deno-xml-parser/index.ts";
@@ -27,10 +30,11 @@ export interface Junit2csvArgs {
   max: number;
 }
 /**
- * Command class that converts a Junit directory to a csv.  implements
+ * Command class that converts a bunch of small per file csv results to a combined csv.  implements
  * the interface YargComnad
  */
-export class Junit2csv implements YargCommand {
+export class CsvCombine implements YargCommand {
+  private headers: string = "";
   constructor() {
     // bind member that will be callbacks.
     this.processYarguments = this.processYarguments.bind(this);
@@ -38,14 +42,14 @@ export class Junit2csv implements YargCommand {
   }
   processYarguments(yargs: Arguments) {
     yargs.help(
-      "collect topline statistics from a directory of junit xml files"
+      "combine csvs that all have a title and data lines.  takes first title line of first file; and then only 2nd through 'n' lines of subsequent files; i.e. assumes a normalized set of files"
     );
     yargs.options({
-      testDir: {
+      sourceCSV: {
         type: "string",
         default: ".",
-        description: "location of junit compatible xml files",
-        alias: ["t", "path", "testdir"],
+        description: "location of csv files to combine",
+        alias: ["source", "scsv", "path"],
       },
       results: {
         type: "string",
@@ -59,11 +63,12 @@ export class Junit2csv implements YargCommand {
         description: "max number of files to process from the path",
       },
     });
+
     return yargs;
   }
 
   async command(yargs: Arguments & Junit2csvArgs): Promise<void> {
-    const dir = new Path(yargs.testDir);
+    const dir = new Path(yargs.sourceCSV);
     // if a direcotry is passed; turn it into a wildcard blob
     if (dir.isDir) {
       dir.push("*");
@@ -71,13 +76,15 @@ export class Junit2csv implements YargCommand {
     const junitFiles = getFiles(dir);
     const resultCSV: string[][] = [];
     // make the csv title
-    resultCSV.push(["name", ...this.getCSVtitle()]);
     for (let i = 0; i < junitFiles.length; i++) {
       const currentFile = junitFiles[i];
       try {
         const results = await this.processFile(currentFile);
         if (results.status == "success") {
-          resultCSV.push([currentFile.name, ...results.results]);
+          // unwrap each csv line and put in the doouble array
+          results.resultsLines.forEach((line) => {
+            resultCSV.push(line.split(",")); // split the string into it's components
+          });
         } else {
           console.log(`failure ${results.message}`);
         }
@@ -87,6 +94,9 @@ export class Junit2csv implements YargCommand {
       }
       if (yargs.max && i === yargs.max) break;
     }
+    // add the header row
+    resultCSV.unshift(["name", "file_link", ...this.getCSVtitle()]);
+
     const csvStream = convertCSV(resultCSV);
     const te = new TextEncoder();
     try {
@@ -112,26 +122,31 @@ export class Junit2csv implements YargCommand {
    * @param resultCSV 2d array to be converted to a csvfile stream
    */
 
-  isTestSuite(xmlFile: Document) {
-    return xmlFile?.root?.children[0].name == "testsuite" ?? false;
-  }
-  async processFile(file: WalkEntry): Promise<JUnitResults> {
-    const result: JUnitResults = {
+  async processFile(file: WalkEntry): Promise<CSVResults> {
+    const result: CSVResults = {
       status: "failure",
       message: "unknwon failure",
-      results: [],
+      resultsLines: [],
     };
     try {
       const decoder = new TextDecoder("utf8");
-      const xmlEntry = await Deno.readFile(file.path);
-      const xmlResult = parse(decoder.decode(xmlEntry));
-      if (!this.isTestSuite(xmlResult)) {
-        result.message = `${file.name} (${file.path}) is not a JUnit XML test suite result and was skipped`;
+      const csvFile = await Deno.readFile(file.path);
+      const csvFileLines = decoder.decode(csvFile).split(/\r\n|\n/);
+      // put the headers in the variable; and make csvFileLines just the data
+      const headers = csvFileLines.shift() ?? "no headers";
+      if (!this.setHeaders(headers)) {
+        result.message = `${file.name} (${file.path}) is not a CSV file with headers compatible with the first file you read`;
       } else {
         result.status = "success";
-        result.message = `Test Suite Read for ${file.name}`;
-        result.results = this.getCSVline(xmlResult);
-        result.results.push(`file://${file.path}`);
+        result.message = `CSV File Read for ${file.name}`;
+        // append the filename as the first column in each case
+        csvFileLines.forEach((line) => {
+          if (line.length > 0)
+            result.resultsLines.push(
+              `${file.name},file://${file.path},${line}`
+            );
+        });
+        // output line 2...length and put in results.  append filename to the beginning
       }
       return result;
     } catch (error) {
@@ -139,34 +154,27 @@ export class Junit2csv implements YargCommand {
       return result;
     }
   }
-  getCSVtitle(): string[] {
-    return ["tests", "errors", "failures", "assertions", "time", "path"];
+  /**
+   *
+   * @param headers headers to set.
+   * sets the headers class property for the csv file; and checks the the parameter matchs the
+   * class property.  in both the case where the property was set or the paremeter matches the property;
+   * return true
+   */
+  setHeaders(headers: string): boolean {
+    if (this.headers === "") {
+      this.headers = headers;
+      return true;
+    } else {
+      return headers === this.headers;
+    }
   }
-  getCSVline(xml: Document): string[] {
-    const testResults = xml?.root?.children[0]
-      .attributes as JUnitXMLSuiteAttributes;
-    return [
-      testResults.tests,
-      testResults.errors,
-      testResults.failures,
-      testResults.assertions,
-      testResults.time,
-    ];
+  getCSVtitle(): string[] {
+    return this.headers.split(",");
   }
 }
-interface JUnitResults {
+interface CSVResults {
   status: "success" | "failure";
   message: string;
-  results: string[];
-}
-interface JUnitXMLSuiteAttributes {
-  assertions: string;
-  errors: string;
-  failures: string;
-  file: string;
-  name: string;
-  skipped: string;
-  tests: string;
-  time: string;
-  warnings: string;
+  resultsLines: string[];
 }
