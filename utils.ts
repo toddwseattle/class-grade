@@ -48,7 +48,7 @@ export function walkGlob(condFunc: (w: WalkEntry) => boolean, glob: string) {
  */
 export function convertCSV(CsvArray: string[][]): string {
   let resultsString = "";
-  CsvArray.forEach((row) => {
+  CsvArray.forEach((row, rowIndex) => {
     let rowString = "";
     row.forEach((cell, i) => {
       if (typeof cell === "string") {
@@ -65,6 +65,8 @@ export function convertCSV(CsvArray: string[][]): string {
         rowString += ",";
       }
     });
+    if (rowIndex % 20 === 0) console.log(`${rowIndex} processeds to csv`);
+
     resultsString += rowString + "\n";
   });
   return resultsString;

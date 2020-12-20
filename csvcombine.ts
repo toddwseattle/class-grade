@@ -95,19 +95,13 @@ export class CsvCombine implements YargCommand {
       if (yargs.max && i === yargs.max) break;
     }
     // add the header row
+    console.log(`total rows: ${resultCSV.length}`);
     resultCSV.unshift(["name", "file_link", ...this.getCSVtitle()]);
 
     const csvStream = convertCSV(resultCSV);
-    const te = new TextEncoder();
+    //   const te = new TextEncoder();
     try {
-      const csv = await Deno.open(yargs.results, { create: true, write: true });
-      const result = await csv.write(te.encode(csvStream));
-      if (result > 0) {
-        console.log(
-          `sucessfully wrote results to csv file in ${yargs.results}, ${result} bytes`
-        );
-      }
-      csv.close();
+      await Deno.writeTextFile(yargs.results, csvStream);
     } catch (error) {
       console.log(`couldn't open and write to ${yargs.results}`);
     }

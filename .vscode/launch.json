@@ -44,11 +44,11 @@
       "args": [
         "run-tests",
         "--path",
-        "\"C:/gh/AshWeb2020-phpobjects/phpobjects-12-04-2020-11-54-27\"",
+        "\"C:/gh/ashweb2020-final/final-12-18-2020-10-10-07\"",
         "--resultsPath",
-        "c:/gh/AshWeb2020-phpobjects/phploc-12-04",
+        "c:/gh/ashweb2020-final/phploc-12-18",
         "--command",
-        "phploc.bat --log-csv _OUTPUT_ ."
+        "phploc.bat --log-csv _OUTPUT_.csv ."
       ],
       "cwd": "${workspaceFolder}",
       "runtimeExecutable": "deno",
@@ -111,18 +111,16 @@
       "outputCapture": "std"
     },
     {
-      "name": "Launch Deno csvcombine phploc-12-04",
+      "name": "Launch Deno csvcombine phploc-final-12-18",
       "request": "launch",
       "type": "pwa-node",
       "program": "main.ts",
       "args": [
         "csvcombine",
         "--sourceCSV",
-        "c:/gh/AshWeb2020-phpobjects/phploc-12-04",
+        "c:/gh/ashweb2020-final/phploc-12-18",
         "--results",
-        "phploc-12-04-all.csv",
-        "--max",
-        "10"
+        "c:/gh/ashweb2020-final/phploc-12-18-all.csv"
       ],
       "cwd": "${workspaceFolder}",
       "runtimeExecutable": "deno",

@@ -144,11 +144,14 @@ export class RunTests implements YargCommand {
     const splitCommand = command.split(" ");
 
     splitCommand.forEach((param, i) => {
-      if (param === RunTests.FILEMARKER) {
+      if (param.indexOf(RunTests.FILEMARKER) >= 0) {
         const outputsub = new Path(resultsPath.toString()).push(
           dir.name.toString()
         );
-        splitCommand[i] = outputsub.toString();
+        splitCommand[i] = param.replace(
+          RunTests.FILEMARKER,
+          outputsub.toString()
+        );
       }
     });
     // exec the command
